@@ -16,6 +16,7 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 export default function Game() {
+  // Import all images from the assets folder
   const imageMap: Record<string, any> = import.meta.glob(`/src/assets/**/*`, {
     eager: true,
     import: 'default',
@@ -24,15 +25,54 @@ export default function Game() {
   const [gameType, setGameType] = useState<string | null>(null);
   const [cardArray, setCardArray] = useState<Card[] | null>(null);
   const [flippedCardIds, setFlippedCardIds] = useState<string[]>([]);
+  const [correct, setCorrect] = useState<string[]>([])
 
+  // Handle card click
   const handleCardClick = (id: string) => {
-    console.log(id)
+    if (correct.includes(id)) return;
     setFlippedCardIds((prev) =>
       prev.includes(id) ? prev.filter((cardId) => cardId !== id) : [...prev, id]
     );
-    console.log(flippedCardIds)
   };
 
+  // Check if all cards are flipped
+  useEffect(() => {
+    if (!cardArray) return;
+    if (correct.length / 2 === (Array.from(cardArray!)?.length) / 2) {
+      // TODO: Show a message that the game is completed
+      console.log('Game Completed');
+    }
+  }, [correct, flippedCardIds])
+
+  // Check if two cards are flipped
+  useEffect(() => {
+    if (flippedCardIds.length < 2) return;
+    if (flippedCardIds.length > 2) {
+      console.warn('All cards being unflipped. Storage length is more than 2');
+      setFlippedCardIds([])
+    }
+
+    const Array = [...flippedCardIds];
+    for (const key in Array) {
+      Array[key] = Array[key].split('-')?.[0]
+    }
+
+    if (Array[0] === Array[1]) {
+      console.log('Correct');
+      setCorrect((prev) => 
+      [...prev, ...flippedCardIds]
+      )
+      setFlippedCardIds([])
+    } else {
+      console.log('Incorrect');
+      setTimeout(() => {
+        setFlippedCardIds([]);
+      }, 1000);
+    }
+
+  }, [flippedCardIds])
+
+  // Get the game type from the URL
   useEffect(() => {
     const queryString = window.location.search;
     const urlParams = new URLSearchParams(queryString);
@@ -40,6 +80,7 @@ export default function Game() {
     setGameType(gameParam);
   }, []);
 
+  // Filter the cards based on the game type
   useEffect(() => {
     if (gameType) {
       const filteredCards: Card[] = [];
@@ -70,12 +111,12 @@ export default function Game() {
 
         <div className="flex-grow text-center">
           <div>
-            {gameType ? <p className="text-secondary">Game Type: {gameType}</p> : <p>No game type specified.</p>}
+            {gameType ? <p className="text-secondary">Game Type: {gameType.charAt(0).toUpperCase() + gameType.slice(1)}</p> : <p>No game type specified.</p>}
             {cardArray ? (
               <div className="flex justify-center w-full">
                 <div className="grid grid-cols-4 gap-4 p-4">
                   {cardArray.map((card) => {
-                    const isFlipped = flippedCardIds.includes(card.id);
+                    const isFlipped = flippedCardIds.includes(card.id) || correct.includes(card.id);
 
                     return (
                       <div key={card.id} onClick={() => handleCardClick(card.id)}
