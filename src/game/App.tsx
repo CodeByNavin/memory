@@ -25,21 +25,69 @@ export default function Game() {
   const [gameType, setGameType] = useState<string | null>(null);
   const [cardArray, setCardArray] = useState<Card[] | null>(null);
   const [flippedCardIds, setFlippedCardIds] = useState<string[]>([]);
-  const [correct, setCorrect] = useState<string[]>([])
+  const [correct, setCorrect] = useState<string[]>([]);
+  const [gameOver, setGameOver] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Handle card click
   const handleCardClick = (id: string) => {
     if (correct.includes(id)) return;
+    if (flippedCardIds.includes(id)) return;
+    
     setFlippedCardIds((prev) =>
       prev.includes(id) ? prev.filter((cardId) => cardId !== id) : [...prev, id]
     );
   };
 
+  // Get the game type from the URL
+  useEffect(() => {
+    const queryString = window.location.search;
+    const urlParams = new URLSearchParams(queryString);
+    const gameParam = urlParams.get('type');
+    setGameType(gameParam);
+  }, []);
+
+  // Filter the cards based on the game type
+  useEffect(() => {
+    if (gameType) {
+      const filteredCards: Card[] = [];
+
+      for (const key in imageMap) {
+        // Extract the folder name after /src/assets/
+        const match = key.match(/\/src\/assets\/([^\/]+)\//);
+        const folder = match ? match[1] : null;
+        if (imageMap.hasOwnProperty(key) && folder === gameType) {
+          filteredCards.push({ key, src: imageMap[key], id: key });
+        }
+      }
+
+      if (filteredCards.length === 0) {
+        setError("Invalid game type specified.");
+        setCardArray(null);
+        return;
+      } else {
+        setError(null);
+      }
+
+      // Duplicate and give unique IDs
+      const duplicatedCards: Card[] = filteredCards.flatMap((card) => [
+        { ...card, id: `${card.key}-1` },
+        { ...card, id: `${card.key}-2` },
+      ]);
+
+      const shuffledCards = shuffleArray(duplicatedCards);
+      setCardArray(shuffledCards);
+    }
+  }, [gameType]);
+
   // Check if all cards are flipped
   useEffect(() => {
     if (!cardArray) return;
     if (correct.length / 2 === (Array.from(cardArray!)?.length) / 2) {
-      // TODO: Show a message that the game is completed
+      setTimeout(() => {
+        setFlippedCardIds([]);
+        setGameOver(true);
+      }, 500)
       console.log('Game Completed');
     }
   }, [correct, flippedCardIds])
@@ -59,96 +107,114 @@ export default function Game() {
 
     if (Array[0] === Array[1]) {
       console.log('Correct');
-      setCorrect((prev) => 
-      [...prev, ...flippedCardIds]
+      setCorrect((prev) =>
+        [...prev, ...flippedCardIds]
       )
       setFlippedCardIds([])
     } else {
       console.log('Incorrect');
       setTimeout(() => {
         setFlippedCardIds([]);
-      }, 1000);
+      }, 500);
     }
 
   }, [flippedCardIds])
 
-  // Get the game type from the URL
-  useEffect(() => {
-    const queryString = window.location.search;
-    const urlParams = new URLSearchParams(queryString);
-    const gameParam = urlParams.get('type');
-    setGameType(gameParam);
-  }, []);
-
-  // Filter the cards based on the game type
-  useEffect(() => {
-    if (gameType) {
-      const filteredCards: Card[] = [];
-
-      for (const key in imageMap) {
-        if (imageMap.hasOwnProperty(key) && key.includes(gameType)) {
-          filteredCards.push({ key, src: imageMap[key], id: key });
-        }
-      }
-
-      // Duplicate and give unique IDs
-      const duplicatedCards: Card[] = filteredCards.flatMap((card) => [
-        { ...card, id: `${card.key}-1` },
-        { ...card, id: `${card.key}-2` },
-      ]);
-
-      const shuffledCards = shuffleArray(duplicatedCards);
-      setCardArray(shuffledCards);
-    }
-  }, [gameType]);
 
 
   return (
     <main className="bg-primary justify-between h-screen flex-col flex">
       <div className="px-5 flex flex-col items-center justify-between text-wrap">
-
         <h1 className="text-accent text-3xl font-semibold p-4">Memory Game</h1>
 
         <div className="flex-grow text-center">
           <div>
-            {gameType ? <p className="text-secondary">Game Type: {gameType.charAt(0).toUpperCase() + gameType.slice(1)}</p> : <p>No game type specified.</p>}
-            {cardArray ? (
-              <div className="flex justify-center w-full">
-                <div className="grid grid-cols-4 gap-4 p-4">
-                  {cardArray.map((card) => {
-                    const isFlipped = flippedCardIds.includes(card.id) || correct.includes(card.id);
+            {gameType ? (
+              <p className="text-secondary">
+                Game Type: {gameType.charAt(0).toUpperCase() + gameType.slice(1)}
+              </p>
+            ) : (
+              <p>No game type specified.</p>
+            )}
 
-                    return (
-                      <div key={card.id} onClick={() => handleCardClick(card.id)}
-                        className="flex justify-center items-center">
-                        <div
-                          className="perspective w-28 h-36 cursor-pointer"
-                        >
+            <span className="text-secondary">
+              Score: {correct.length / 2} / {cardArray ? cardArray.length / 2 : 0}
+            </span>
+
+            {error ? (
+              <div>
+                <p className="text-red-500">{error}</p>
+                <button
+                  onClick={() => {
+                    window.location.href = '/';
+                  }}
+                  className="bg-accent hover:cursor-pointer text-white px-4 py-2 rounded mt-4 ml-4"
+                >
+                  Go to Home
+                </button>
+              </div>
+            ) : cardArray ? (
+              <>
+                {gameOver ? (
+                  <div>
+                    <p className="text-secondary">Game Over! You won!</p>
+                    <button
+                      onClick={() => {
+                        window.location.reload();
+                      }}
+                      className="bg-accent hover:cursor-pointer text-white px-4 py-2 rounded mt-4"
+                    >
+                      Restart Game
+                    </button>
+                    <button
+                      onClick={() => {
+                        window.location.href = '/';
+                      }}
+                      className="bg-accent hover:cursor-pointer text-white px-4 py-2 rounded mt-4 ml-4"
+                    >
+                      Go to Home
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex justify-center w-full">
+                    <div className="grid grid-cols-4 gap-4 p-4">
+                      {cardArray.map((card) => {
+                        const isFlipped =
+                          flippedCardIds.includes(card.id) || correct.includes(card.id);
+
+                        return (
                           <div
-                            className={`relative w-full h-full transition-transform duration-500 transform preserve-3d ${isFlipped ? 'rotate-x-180' : ''
-                              }`}
+                            key={card.id}
+                            onClick={() => handleCardClick(card.id)}
+                            className="flex justify-center items-center"
                           >
-                            {/* Front */}
-                            <div className="absolute w-full h-full backface-hidden bg-gray-400 rounded-lg flex justify-center items-center shadow-md">
-                              <span className="text-white text-xl">?</span>
-                            </div>
+                            <div className="perspective w-28 h-36 cursor-pointer">
+                              <div
+                                className={`relative w-full h-full transition-transform duration-500 transform preserve-3d ${isFlipped ? 'rotate-x-180' : ''
+                                  }`}
+                              >
+                                {/* Front */}
+                                <div className="absolute w-full h-full backface-hidden bg-gray-400 rounded-lg flex justify-center items-center shadow-md">
+                                  <span className="text-white text-xl">?</span>
+                                </div>
 
-                            {/* Back */}
-                            <div className="absolute w-full h-full backface-hidden bg-gray-400 rounded-lg flex justify-center items-center shadow-md transform rotate-x-180">
-                              <img
-                                src={card.src}
-                                alt="Card Image"
-                                className="object-cover w-10` h-10"
-                              />
+                                {/* Back */}
+                                <div className="absolute w-full h-full backface-hidden bg-gray-400 rounded-lg flex justify-center items-center shadow-md transform rotate-x-180">
+                                  <img
+                                    src={card.src}
+                                    alt="Card"
+                                    className="object-cover w-10 h-10"
+                                  />
+                                </div>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                </div>
-              </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>
             ) : (
               <p>No card map data available.</p>
             )}
@@ -156,15 +222,16 @@ export default function Game() {
         </div>
       </div>
 
-
       <footer className="bg-secondary text-white text-center p-4 w-full">
         © 2025 My Memory Game
         <p>
-          Made By <a href="https://codebynavin.me/">
+          Made By{' '}
+          <a href="https://codebynavin.me/" className="underline">
             Navin
           </a>
         </p>
       </footer>
-    </main>
+    </main >
+
   );
 };
