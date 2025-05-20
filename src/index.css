@@ -1,5 +1,29 @@
 @import "tailwindcss";
 
 @theme {
-  --color-test: #FF0100;
+  --color-primary: #FFD166;
+  --color-secondary: #4FC3DC;
+  --color-accent: #A020F0;
+}
+
+@layer utilities {
+  /* 3D perspective */
+  .perspective {
+    perspective: 1000px;
+  }
+
+  /* Preserve 3D space for child elements */
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+
+  /* Hides the back face of an element when it's flipped */
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+
+  /* Rotation on the X axis */
+  .rotate-x-180 {
+    transform: rotateX(180deg);
+  }
 }
