@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 
 interface Card {
   key: string;
@@ -16,12 +16,6 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 export default function Game() {
-  // Import all images from the assets folder
-  const imageMap: Record<string, any> = import.meta.glob(`/src/assets/**/*`, {
-    eager: true,
-    import: 'default',
-  });
-
   const [gameType, setGameType] = useState<string | null>(null);
   const [cardArray, setCardArray] = useState<Card[] | null>(null);
   const [flippedCardIds, setFlippedCardIds] = useState<string[]>([]);
@@ -29,98 +23,112 @@ export default function Game() {
   const [gameOver, setGameOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Handle card click
-  const handleCardClick = (id: string) => {
-    if (correct.includes(id)) return;
-    if (flippedCardIds.includes(id)) return;
-    
-    setFlippedCardIds((prev) =>
-      prev.includes(id) ? prev.filter((cardId) => cardId !== id) : [...prev, id]
-    );
-  };
-
   // Get the game type from the URL
   useEffect(() => {
-    const queryString = window.location.search;
+    console.log('useEffect: Getting game type from URL');
+    const queryString = window.location.href.split('?')[1];
     const urlParams = new URLSearchParams(queryString);
     const gameParam = urlParams.get('type');
     setGameType(gameParam);
+    console.log('useEffect: Game type set to:', gameParam);
   }, []);
 
-  // Filter the cards based on the game type
+  // Load images based on game type
   useEffect(() => {
-    if (gameType) {
-      const filteredCards: Card[] = [];
-
-      for (const key in imageMap) {
-        // Extract the folder name after /src/assets/
-        const match = key.match(/\/src\/assets\/([^\/]+)\//);
-        const folder = match ? match[1] : null;
-        if (imageMap.hasOwnProperty(key) && folder === gameType) {
-          filteredCards.push({ key, src: imageMap[key], id: key });
-        }
-      }
-
-      if (filteredCards.length === 0) {
-        setError("Invalid game type specified.");
-        setCardArray(null);
-        return;
-      } else {
-        setError(null);
-      }
-
-      // Duplicate and give unique IDs
-      const duplicatedCards: Card[] = filteredCards.flatMap((card) => [
-        { ...card, id: `${card.key}-1` },
-        { ...card, id: `${card.key}-2` },
-      ]);
-
-      const shuffledCards = shuffleArray(duplicatedCards);
-      setCardArray(shuffledCards);
+    if (!gameType) {
+      console.log('useEffect: No game type, skipping image loading');
+      return;
     }
+
+    console.log('useEffect: Loading images for game type:', gameType);
+
+    fetch('/assets-manifest.json')
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
+      .then((data) => {
+        const files = data[gameType];
+
+        if (!files) {
+          setError(`No images found for game type: ${gameType}`);
+          setCardArray(null);
+          return;
+        }
+
+        const cards = files.map((file: any, index: number) => ({
+          key: `${file}-${index}`,
+          src: `/assets/${gameType}/${file}`,
+          id: `${file}-${index}`,
+        }));
+
+        const duplicatedCards = cards.flatMap((card: { id: any; }) => [
+          { ...card, id: `${card.id}-1` },
+          { ...card, id: `${card.id}-2` },
+        ]);
+
+        setCardArray(shuffleArray(duplicatedCards));
+        setError(null); // Clear any previous errors
+      })
+      .catch((err: any) => {
+        console.error('Error loading images:', err);
+        setError(
+          `Failed to load images for game type: ${gameType}. ${err.message}`
+        );
+        setCardArray(null);
+      });
   }, [gameType]);
 
   // Check if all cards are flipped
   useEffect(() => {
-    if (!cardArray) return;
-    if (correct.length / 2 === (Array.from(cardArray!)?.length) / 2) {
+    if (!cardArray) {
+      console.log('useEffect: cardArray is null, skipping win check');
+      return;
+    }
+    if (correct.length / 2 === cardArray.length / 2) {
       setTimeout(() => {
         setFlippedCardIds([]);
         setGameOver(true);
-      }, 500)
+      }, 500);
       console.log('Game Completed');
     }
-  }, [correct, flippedCardIds])
+  }, [correct, cardArray]);
+
+  // Handle card click
+  const handleCardClick = (id: string) => {
+    if (correct.includes(id)) return;
+    if (flippedCardIds.includes(id)) return;
+
+    setFlippedCardIds((prev) =>
+      prev.includes(id) ? prev.filter((cardId) => cardId !== id) : [...prev, id]
+    );
+  };
 
   // Check if two cards are flipped
   useEffect(() => {
     if (flippedCardIds.length < 2) return;
     if (flippedCardIds.length > 2) {
       console.warn('All cards being unflipped. Storage length is more than 2');
-      setFlippedCardIds([])
+      setFlippedCardIds([]);
+      return;
     }
 
-    const Array = [...flippedCardIds];
-    for (const key in Array) {
-      Array[key] = Array[key].split('-')?.[0]
-    }
+    const tempArray = [...flippedCardIds];
+    const simplifiedIds = tempArray.map((id) => id.split('-')?.[0]);
 
-    if (Array[0] === Array[1]) {
+    if (simplifiedIds[0] === simplifiedIds[1]) {
       console.log('Correct');
-      setCorrect((prev) =>
-        [...prev, ...flippedCardIds]
-      )
-      setFlippedCardIds([])
+      setCorrect((prev) => [...prev, ...flippedCardIds]);
+      setFlippedCardIds([]);
     } else {
       console.log('Incorrect');
       setTimeout(() => {
         setFlippedCardIds([]);
       }, 500);
     }
-
-  }, [flippedCardIds])
-
-
+  }, [flippedCardIds]);
 
   return (
     <main className="bg-primary justify-between h-screen flex-col flex">
@@ -131,7 +139,8 @@ export default function Game() {
           <div>
             {gameType ? (
               <p className="text-secondary">
-                Game Type: {gameType.charAt(0).toUpperCase() + gameType.slice(1)}
+                Game Type:{' '}
+                {gameType.charAt(0).toUpperCase() + gameType.slice(1)}
               </p>
             ) : (
               <p>No game type specified.</p>
@@ -180,7 +189,8 @@ export default function Game() {
                     <div className="grid grid-cols-4 gap-4 p-4">
                       {cardArray.map((card) => {
                         const isFlipped =
-                          flippedCardIds.includes(card.id) || correct.includes(card.id);
+                          flippedCardIds.includes(card.id) ||
+                          correct.includes(card.id);
 
                         return (
                           <div
@@ -216,7 +226,7 @@ export default function Game() {
                 )}
               </>
             ) : (
-              <p>No card map data available.</p>
+              <p>Loading card data...</p>
             )}
           </div>
         </div>
@@ -231,7 +241,6 @@ export default function Game() {
           </a>
         </p>
       </footer>
-    </main >
-
+    </main>
   );
-};
+}

@@ -12,7 +12,7 @@ export default function MainPage() {
 
 
         <div className="flex-grow">
-          <Card name="Ocean" src="./assets/ocean/turtle.png" />
+          <Card name="Ocean" src="/assets/ocean/turtle.png" />
         </div>
       </div>
 
