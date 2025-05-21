@@ -11,8 +11,9 @@ export default function MainPage() {
         </p>
 
 
-        <div className="flex-grow">
+        <div className="flex-grow pt-4 gap-x-6 flex flex-row items-center justify-center">
           <Card name="Ocean" src="/assets/ocean/turtle.png" />
+          <Card name="Forest" src="/assets/forest/bear.png" />
         </div>
       </div>
 

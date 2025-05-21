@@ -1,4 +1,14 @@
 {
+  "forest": [
+    "bear.png",
+    "elephant.png",
+    "frog.png",
+    "insect.png",
+    "owl.png",
+    "owl_pink.png",
+    "owl_yellow.png",
+    "tapir.png"
+  ],
   "ocean": [
     "dolphin.png",
     "jellyfish_cute.png",
